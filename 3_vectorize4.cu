@@ -59,26 +59,25 @@ __global__ void MatMulKernel_sharedMemory(float* A, float* B, float* C) {
 #pragma unroll
           for (int j = 0; j < BS_TILE; ++j) {
                 float4 b0 = *(float4*)(&bsub[j][4 * threadIdx.x]);
-                float4 a0 = *(float4*)(&asub[j][4 * threadIdx.y]);
-                values[0][0] += a0.x * b0.x;
-                values[0][1] += a0.x * b0.y;
-                values[0][2] += a0.x * b0.z;
-                values[0][3] += a0.x * b0.w;
+                values[0][0] += asub[4 * threadIdx.y][j] * b0.x;
+                values[0][1] += asub[4 * threadIdx.y][j] * b0.y;
+                values[0][2] += asub[4 * threadIdx.y][j] * b0.z;
+                values[0][3] += asub[4 * threadIdx.y][j] * b0.w;
 
-                values[1][0] += a0.y * b0.x;
-                values[1][1] += a0.y * b0.y;
-                values[1][2] += a0.y * b0.z;
-                values[1][3] += a0.y * b0.w;
+                values[1][0] += asub[4 * threadIdx.y + 1][j] * b0.x;
+                values[1][1] += asub[4 * threadIdx.y + 1][j] * b0.y;
+                values[1][2] += asub[4 * threadIdx.y + 1][j] * b0.z;
+                values[1][3] += asub[4 * threadIdx.y + 1][j] * b0.w;
 
-                values[2][0] += a0.z * b0.x;
-                values[2][1] += a0.z * b0.y;
-                values[2][2] += a0.z * b0.z;
-                values[2][3] += a0.z * b0.w;
+                values[2][0] += asub[4 * threadIdx.y + 2][j] * b0.x;
+                values[2][1] += asub[4 * threadIdx.y + 2][j] * b0.y;
+                values[2][2] += asub[4 * threadIdx.y + 2][j] * b0.z;
+                values[2][3] += asub[4 * threadIdx.y + 2][j] * b0.w;
 
-                values[3][0] += a0.w * b0.x;
-                values[3][1] += a0.w * b0.y;
-                values[3][2] += a0.w * b0.z;
-                values[3][3] += a0.w * b0.w;
+                values[3][0] += asub[4 * threadIdx.y + 3][j] * b0.x;
+                values[3][1] += asub[4 * threadIdx.y + 3][j] * b0.y;
+                values[3][2] += asub[4 * threadIdx.y + 3][j] * b0.z;
+                values[3][3] += asub[4 * threadIdx.y + 3][j] * b0.w;
                 /*
                 float4& b0 = *(float4*)(&bsub[j][4 * threadIdx.x]);
                 values[0][0] += asub[4 * threadIdx.y][j] * b0.x;
@@ -101,13 +100,13 @@ __global__ void MatMulKernel_sharedMemory(float* A, float* B, float* C) {
                 values[3][2] += asub[4 * threadIdx.y + 3][j] * b0.z;
                 values[3][3] += asub[4 * threadIdx.y + 3][j] * b0.w;
                 */
-		__syncthreads();
           }
+          __syncthreads();
   }
-  *(float4*)(C + (row_block_start + 4 * threadIdx.y) * K + col_block_start + 4 * threadIdx.x) = *(float4*)values;
-  *(float4*)(C + (row_block_start + 4 * threadIdx.y + 1) * K + col_block_start + 4 * threadIdx.x) = *(float4*)(&values[1][0]);
-  *(float4*)(C + (row_block_start + 4 * threadIdx.y + 2) * K + col_block_start + 4 * threadIdx.x) = *(float4*)(&values[2][0]);
-  *(float4*)(C + (row_block_start + 4 * threadIdx.y + 3) * K + col_block_start + 4 * threadIdx.x) = *(float4*)(&values[3][0]);
+  *(float4*)(C + (row_block_start + 4 * threadIdx.y) * N + col_block_start + 4 * threadIdx.x) = *(float4*)values;
+  *(float4*)(C + (row_block_start + 4 * threadIdx.y + 1) * N + col_block_start + 4 * threadIdx.x) = *(float4*)(&values[1][0]);
+  *(float4*)(C + (row_block_start + 4 * threadIdx.y + 2) * N + col_block_start + 4 * threadIdx.x) = *(float4*)(&values[2][0]);
+  *(float4*)(C + (row_block_start + 4 * threadIdx.y + 3) * N + col_block_start + 4 * threadIdx.x) = *(float4*)(&values[3][0]);
 }
 
 template <int M, int K, int N, bool enableProfiler>
