@@ -31,8 +31,8 @@ __global__ void MatMulKernel_sharedMemory(float* A, float* B, float* C) {
 
 #pragma unroll
   for (int i = 0; i < K / BS_TILE; ++i) {
-          __shared__ float asub[BS_TILE][BS_TILE];
-          __shared__ float bsub[BS_TILE][BS_TILE];
+          __shared__ __align__(16) float asub[BS_TILE][BS_TILE];
+          __shared__ __align__(16) float bsub[BS_TILE][BS_TILE];
 
           // hard code.
           *(float4*)(&asub[4 * threadIdx.y][4 * threadIdx.x]) = *(float4*)(A + (row_block_start + 4 * threadIdx.y) * K + i * BS_TILE + 4 * threadIdx.x);
