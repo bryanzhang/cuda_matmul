@@ -17,6 +17,7 @@
       } \
     } while(0)
 
+#include "check_result.h"
 
 // 每个thread block内线程为BLOCKSIZE * BLOCKSIZE
 #define BLOCK_SIZE_M 32
@@ -45,8 +46,22 @@ enum Strategy {
   REDUCE_BANK_CONFLICTS,
 };
 
+template <int M, int K, int N>
+bool checkResultAgainstNaive(float* d_A, float* d_B, const float* d_C) {
+  float* d_reference;
+  CUDA_CALL(cudaMalloc((void**)&d_reference, M * N * sizeof(float)));
+  dim3 dimBlock(BLOCK_SIZE_N, BLOCK_SIZE_M);
+  dim3 dimGrid(N / BLOCK_SIZE_N, M / BLOCK_SIZE_M);
+  MatMulKernel<M, N, K><<<dimGrid, dimBlock>>>(d_A, d_B, d_reference);
+  CUDA_CALL(cudaGetLastError());
+  CUDA_CALL(cudaDeviceSynchronize());
+  bool passed = compareResults(d_C, d_reference, M, N);
+  CUDA_CALL(cudaFree(d_reference));
+  return passed;
+}
+
 template <int M, int K, int N, bool enableProfiler>
-float testMatMul(Strategy st, bool checkResult) {
+float testMatMul(Strategy st, bool checkResult, bool& resultCorrect) {
   float* h_A, *h_B, *h_C;
   float* d_A, *d_B, *d_C;
 
@@ -114,6 +129,10 @@ float testMatMul(Strategy st, bool checkResult) {
   float milliseconds = 0;
   CUDA_CALL(cudaEventElapsedTime(&milliseconds, start, stop));
 
+  if (checkResult) {
+    resultCorrect = checkResultAgainstNaive<M, K, N>(d_A, d_B, d_C) && resultCorrect;
+  }
+
   // 清理
   free(h_A);
   free(h_B);
@@ -156,14 +175,17 @@ int main() {
   constexpr int times = 30;
   constexpr Strategy st = REDUCE_BANK_CONFLICTS;
   constexpr int M = 3840, K = 2880, N = 3840;
-  constexpr bool checkResult = false, enableProfiler = false;
+  constexpr bool checkResult = true, enableProfiler = false;
   float accMillis = 0.0;
+  bool resultCorrect = true;
   for (int i = 0; i <  times; ++i) {
-    accMillis += testMatMul<M, K, N, enableProfiler>(st, checkResult);
+    accMillis += testMatMul<M, K, N, enableProfiler>(st, checkResult && i == times - 1, resultCorrect);
     if (((i + 1) % 10) == 0) {
       printf("Testing process: %d / %d\n", (i + 1), times);
     }
   }
   printf("M=%d, K=%d, N=%d, strategy=%s, bs_m=%d, bs_n=%d, bs_k=%d, enableProfiler=%d, MatMul: Totally elapsed time in GPU was %.2f ms, %.2f ms per operation\n",
                   M, K, N, strategyToString(st), BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K, enableProfiler ? 1: 0, accMillis, accMillis / times);
+  printf("Final result check: %s\n", resultCorrect ? "PASS" : "FAIL");
+  return resultCorrect ? 0 : 1;
 }

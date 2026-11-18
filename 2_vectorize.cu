@@ -17,6 +17,7 @@
       } \
     } while(0)
 
+#include "check_result.h"
 
 // 每个thread block内线程为BLOCKSIZE * BLOCKSIZE
 constexpr int BS_XY = 32;  // thread block x & y
@@ -59,13 +60,14 @@ __global__ void MatMulKernel_sharedMemory(float* A, float* B, float* C) {
                 values[1][0] += asub[2 * threadIdx.y + 1][j] * bsub[j][2 * threadIdx.x];
                 values[1][1] += asub[2 * threadIdx.y + 1][j] * bsub[j][2 * threadIdx.x + 1];
           }
+	  __syncthreads();
   }
-  *(float2*)(C + (row_block_start + 2 * threadIdx.y) * K + col_block_start + 2 * threadIdx.x) = *(float2*)values;
-  *(float2*)(C + (row_block_start + 2 * threadIdx.y + 1) * K + col_block_start + 2 * threadIdx.x) = *(float2*)(values + 2);
+  *(float2*)(C + (row_block_start + 2 * threadIdx.y) * N + col_block_start + 2 * threadIdx.x) = *(float2*)values;
+  *(float2*)(C + (row_block_start + 2 * threadIdx.y + 1) * N + col_block_start + 2 * threadIdx.x) = *(float2*)(values + 2);
 }
 
 template <int M, int K, int N, bool enableProfiler>
-float testMatMul(bool checkResult) {
+float testMatMul(bool checkResult, bool& resultCorrect) {
   float* h_A, *h_B, *h_C;
   float* d_A, *d_B, *d_C;
 
@@ -119,6 +121,10 @@ float testMatMul(bool checkResult) {
   float milliseconds = 0;
   CUDA_CALL(cudaEventElapsedTime(&milliseconds, start, stop));
 
+  if (checkResult) {
+    resultCorrect = checkResultAgainstCublas(d_A, d_B, d_C, M, K, N) && resultCorrect;
+  }
+
   // 清理
   free(h_A);
   free(h_B);
@@ -145,14 +151,17 @@ int main() {
 
   constexpr int times = 30;
   constexpr int M = 3840, K = 2880, N = 3840;
-  constexpr bool checkResult = false, enableProfiler = false;
+  constexpr bool checkResult = true, enableProfiler = false;
   float accMillis = 0.0;
+  bool resultCorrect = true;
   for (int i = 0; i <  times; ++i) {
-    accMillis += testMatMul<M, K, N, enableProfiler>(checkResult);
+    accMillis += testMatMul<M, K, N, enableProfiler>(checkResult && i == times - 1, resultCorrect);
     if (((i + 1) % 10) == 0) {
       printf("Testing process: %d / %d\n", (i + 1), times);
     }
   }
   printf("M=%d, K=%d, N=%d, bs_m=%d, bs_n=%d, bs_k=%d, enableProfiler=%d, MatMul: Totally elapsed time in GPU was %.2f ms, %.2f ms per operation\n",
                   M, K, N, BS_XY, BS_XY, BS_TILE, enableProfiler ? 1: 0, accMillis, accMillis / times);
+  printf("Final result check: %s\n", resultCorrect ? "PASS" : "FAIL");
+  return resultCorrect ? 0 : 1;
 }
