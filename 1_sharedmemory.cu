@@ -133,7 +133,7 @@ int main() {
     std::cout << "Maximum dimension size of a grid size: (" << prop.maxGridSize[0] << ", " << prop.maxGridSize[1] << ", " << prop.maxGridSize[2] << ")\n";
   }
 
-  constexpr int times = 30;
+  constexpr int times = 100;
   constexpr int M = 3840, K = 2880, N = 3840;
   constexpr bool checkResult = true, enableProfiler = false;
   float accMillis = 0.0;

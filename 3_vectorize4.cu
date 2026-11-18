@@ -101,6 +101,7 @@ __global__ void MatMulKernel_sharedMemory(float* A, float* B, float* C) {
                 values[3][2] += asub[4 * threadIdx.y + 3][j] * b0.z;
                 values[3][3] += asub[4 * threadIdx.y + 3][j] * b0.w;
                 */
+		__syncthreads();
           }
   }
   *(float4*)(C + (row_block_start + 4 * threadIdx.y) * K + col_block_start + 4 * threadIdx.x) = *(float4*)values;
@@ -192,7 +193,7 @@ int main() {
     std::cout << "Maximum dimension size of a grid size: (" << prop.maxGridSize[0] << ", " << prop.maxGridSize[1] << ", " << prop.maxGridSize[2] << ")\n";
   }
 
-  constexpr int times = 30;
+  constexpr int times = 100;
   constexpr int M = 3840, K = 2880, N = 3840;
   constexpr bool checkResult = true, enableProfiler = false;
   float accMillis = 0.0;

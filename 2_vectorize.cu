@@ -35,25 +35,18 @@ __global__ void MatMulKernel_sharedMemory(float* A, float* B, float* C) {
           __shared__ float bsub[BS_TILE][BS_TILE];
 
           // hard code.
-          float2 a0 = *(float2*)(A + (row_block_start + 2 * threadIdx.y) * K + i * BS_TILE + 2 * threadIdx.x);
-          asub[2 * threadIdx.y][2 * threadIdx.x] = a0.x;
-          asub[2 * threadIdx.y][2 * threadIdx.x + 1] = a0.y;
+          *(float2*)(&asub[2 * threadIdx.y][2 * threadIdx.x]) = *(float2*)(A + (row_block_start + 2 * threadIdx.y) * K + i * BS_TILE + 2 * threadIdx.x);
 
-          float2 a1 = *(float2*)(A + (row_block_start + 2 * threadIdx.y + 1) * K + i * BS_TILE + 2 * threadIdx.x);
-          asub[2 * threadIdx.y + 1][2 * threadIdx.x] = a1.x;
-          asub[2 * threadIdx.y + 1][2 * threadIdx.x + 1] = a1.y;
+          *(float2*)(&asub[2 * threadIdx.y + 1][2 * threadIdx.x]) = *(float2*)(A + (row_block_start + 2 * threadIdx.y + 1) * K + i * BS_TILE + 2 * threadIdx.x);
 
-          float2 b0 = *(float2*)(B + (i * BS_TILE + 2 * threadIdx.y) * N + col_block_start + 2 * threadIdx.x);
-          bsub[2 * threadIdx.y][2 * threadIdx.x] = b0.x;
-          bsub[2 * threadIdx.y][2 * threadIdx.x + 1] = b0.y;
+          *(float2*)(&bsub[2 * threadIdx.y][2 * threadIdx.x]) = *(float2*)(B + (i * BS_TILE + 2 * threadIdx.y) * N + col_block_start + 2 * threadIdx.x);
 
-          float2 b1 = *(float2*)(B + (i * BS_TILE + 2 * threadIdx.y + 1) * N + col_block_start + 2 * threadIdx.x);
-          bsub[2 * threadIdx.y + 1][2 * threadIdx.x] = b1.x;
-          bsub[2 * threadIdx.y + 1][2 * threadIdx.x + 1] = b1.y;
+          *(float2*)(&bsub[2 * threadIdx.y + 1][2 * threadIdx.x]) = *(float2*)(B + (i * BS_TILE + 2 * threadIdx.y + 1) * N + col_block_start + 2 * threadIdx.x);
 
           __syncthreads();
           // transpose(original_bsub, bsub);
 
+#pragma unroll
           for (int j = 0; j < BS_TILE; ++j) {
                 values[0][0] += asub[2 * threadIdx.y][j] * bsub[j][2 * threadIdx.x];
                 values[0][1] += asub[2 * threadIdx.y][j] * bsub[j][2 * threadIdx.x + 1];
@@ -63,7 +56,7 @@ __global__ void MatMulKernel_sharedMemory(float* A, float* B, float* C) {
 	  __syncthreads();
   }
   *(float2*)(C + (row_block_start + 2 * threadIdx.y) * N + col_block_start + 2 * threadIdx.x) = *(float2*)values;
-  *(float2*)(C + (row_block_start + 2 * threadIdx.y + 1) * N + col_block_start + 2 * threadIdx.x) = *(float2*)(values + 2);
+  *(float2*)(C + (row_block_start + 2 * threadIdx.y + 1) * N + col_block_start + 2 * threadIdx.x) = *(float2*)(values + 1);
 }
 
 template <int M, int K, int N, bool enableProfiler>
@@ -149,7 +142,7 @@ int main() {
     std::cout << "Maximum dimension size of a grid size: (" << prop.maxGridSize[0] << ", " << prop.maxGridSize[1] << ", " << prop.maxGridSize[2] << ")\n";
   }
 
-  constexpr int times = 30;
+  constexpr int times = 100;
   constexpr int M = 3840, K = 2880, N = 3840;
   constexpr bool checkResult = true, enableProfiler = false;
   float accMillis = 0.0;
