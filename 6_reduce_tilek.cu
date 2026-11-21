@@ -21,8 +21,8 @@
 
 // 每个thread block内线程为BLOCKSIZE * BLOCKSIZE
 constexpr int BS_XY = 16;  // thread block x & y
-constexpr int TILE_BASE = BS_XY * 4;
-constexpr int TILE_M = TILE_BASE * 2;
+constexpr int TILE_BASE = BS_XY * 8;
+constexpr int TILE_M = TILE_BASE;
 constexpr int TILE_N = TILE_M;
 constexpr int TILE_K = 16;
 
