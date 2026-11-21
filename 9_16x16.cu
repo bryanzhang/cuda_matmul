@@ -35,8 +35,8 @@ __global__ void MatMulKernel_sharedMemory(float* _A, float* _B, float* _C) {
     float (&A)[M][K] = *reinterpret_cast<float(*)[M][K]>(_A);
     float (&B)[K][N] = *reinterpret_cast<float(*)[K][N]>(_B);
     float (&C)[M][N] = *reinterpret_cast<float(*)[M][N]>(_C);
-    float (&asub)[TILE_K][TILE_BASE + 2] = *reinterpret_cast<float(*)[TILE_K][TILE_BASE + 2]>(sm);  // 8K, +2 for interleave
-    float (&bsub)[TILE_K][TILE_BASE] = *reinterpret_cast<float(*)[TILE_K][TILE_BASE]>((float*)sm + TILE_K * (TILE_BASE + 2));  // 8K
+    float (&asub)[TILE_K][TILE_BASE + 2] = *reinterpret_cast<float(*)[TILE_K][TILE_BASE + 2]>(sm);  // 16K, +2 for interleave
+    float (&bsub)[TILE_K][TILE_BASE] = *reinterpret_cast<float(*)[TILE_K][TILE_BASE]>((float*)sm + TILE_K * (TILE_BASE + 2));  // 16K
 
 #pragma unroll
     for (int i = 0; i < K / TILE_K; ++i) {
