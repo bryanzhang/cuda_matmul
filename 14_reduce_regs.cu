@@ -36,13 +36,14 @@ __global__ void MatMulKernel_sharedMemory(float* _A, float* _B, float* _C) {
     float (&A)[M][K] = *reinterpret_cast<float(*)[M][K]>(_A);
     float (&B)[K][N] = *reinterpret_cast<float(*)[K][N]>(_B);
     float (&C)[M][N] = *reinterpret_cast<float(*)[M][N]>(_C);
-    float (&asub)[2][TILE_K][TILE_M + 7] = *reinterpret_cast<float(*)[2][TILE_K][TILE_M + 7]>(sm);  // 8400 bytes per buffer, +7 for interleave
-    float (&bsub)[2][TILE_K][TILE_N] = *reinterpret_cast<float(*)[2][TILE_K][TILE_N]>((float*)sm + 2 * TILE_K * (TILE_M + 7));  // 16K per buffer
+    float (&asub)[2][TILE_K][TILE_M + 4] = *reinterpret_cast<float(*)[2][TILE_K][TILE_M + 4]>(sm);  // 8400 bytes per buffer, +4 for interleave
+    float (&bsub)[2][TILE_K][TILE_N] = *reinterpret_cast<float(*)[2][TILE_K][TILE_N]>((float*)sm + 2 * TILE_K * (TILE_M + 4));  // 16K per buffer
 
     const int logic_xidx = (threadIdx.x % 4); // for asub loading, [0,4)
     const int logic_yidx = 8 * threadIdx.y + threadIdx.x / 4;  // [0, 128)
     auto loadTile = [&](int i, int buf) {
 	float4 astripe = *(float4*)(&A[row_block_start + logic_yidx][i * TILE_K + logic_xidx * 4]);  // transponse when laod.
+	// 2-way banck conflicts.
 	asub[buf][4 * logic_xidx + 0][logic_yidx] = astripe.x;
 	asub[buf][4 * logic_xidx + 1][logic_yidx] = astripe.y;
 	asub[buf][4 * logic_xidx + 2][logic_yidx] = astripe.z;
@@ -171,7 +172,7 @@ float testMatMul(bool checkResult, bool& resultCorrect) {
 
   dim3 dimBlock(BS_X, BS_Y);
   dim3 dimGrid(N / TILE_N, M / TILE_M);
-  constexpr int sharedMemoryBytes = 2 * sizeof(float) * (TILE_M + TILE_N + 7) * TILE_K;
+  constexpr int sharedMemoryBytes = 2 * sizeof(float) * (TILE_M + TILE_N + 4) * TILE_K;
   CUDA_CALL(cudaFuncSetAttribute(
       MatMulKernel_sharedMemory<M, N, K>,
       cudaFuncAttributeMaxDynamicSharedMemorySize,
