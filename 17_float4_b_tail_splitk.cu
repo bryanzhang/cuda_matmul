@@ -166,10 +166,8 @@ __global__ void __launch_bounds__(512, 1) MatMulKernel_sharedMemory(float* _A, f
     }
 #pragma unroll
     for (int i = 0; i < 8; ++i) {
-	*(float4*)(&C[row_block_start + 8 * threadIdx.y + i][col_block_start + 4 * threadIdx.x]) =
-	    make_float4(values[i][0], values[i][1], values[i][2], values[i][3]);
-	*(float4*)(&C[row_block_start + 8 * threadIdx.y + i][col_block_start + TILE_N / 2 + 4 * threadIdx.x]) =
-	    make_float4(values[i][4], values[i][5], values[i][6], values[i][7]);
+        *(float4*)(&C[row_block_start + 8 * threadIdx.y + i][col_block_start + 4 * threadIdx.x]) = make_float4(values[i][0], values[i][1], values[i][2], values[i][3]);
+	*(float4*)(&C[row_block_start + 8 * threadIdx.y + i][col_block_start + TILE_N / 2 + 4 * threadIdx.x]) = make_float4(values[i][4], values[i][5], values[i][6], values[i][7]);
     }
 }
 
